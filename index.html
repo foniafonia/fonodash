@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Sucá Dash</title>
+<title>FonoDash</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&family=Rubik:wght@700;800&display=swap" rel="stylesheet">
@@ -162,7 +162,7 @@ body{color:#fff;font-family:'Nunito',system-ui,sans-serif;touch-action:none;-web
     </div>
    </div>
    <div class="start" id="start">
-    <div class="logo"><div class="t1">SUCÁ DASH</div><div class="t2">¡ELIGE LA PALABRA Y NO TE CAIGAS!</div></div>
+    <div class="logo"><div class="t1">FONODASH</div><div class="t2">¡ELIGE LA PALABRA Y NO TE CAIGAS!</div></div>
     <div class="coinRow" id="coinRowStart"><span class="ic"></span><span id="coinsStart">0</span></div>
     <div class="startBtns"><button class="gbtn" id="play" type="button">JUGAR</button><button class="gbtn alt" id="howBtn" type="button">Cómo se juega</button></div>
     <div class="menuBtns"><button class="gbtn alt" id="charBtnStart" type="button">🧑 PERSONAJE</button><button class="gbtn alt" id="shopBtnStart" type="button">🎨 TIENDA</button><button class="gbtn alt" id="passBtnStart" type="button">🎖️ PASE DE BATALLA</button></div>
@@ -172,7 +172,7 @@ body{color:#fff;font-family:'Nunito',system-ui,sans-serif;touch-action:none;-web
     <div class="helpcard">
      <h2>Cómo se juega</h2>
      <ul>
-      <li><b>Palabras:</b> ponte delante del bloque correcto. Se vuelve verde y lo atraviesas. Unas veces en español, otras en hebreo, otras con la palabra hebrea arriba y dibujos abajo.</li>
+      <li><b>Palabras:</b> arriba sale la palabra que toca buscar. Ponte delante del bloque que la tiene escrita: se vuelve verde y lo atraviesas.</li>
       <li><b>Pinchos:</b> un círculo rojo avisa antes de que salgan. Si los tocas te caes al suelo un momento.</li>
       <li><b>Doble salto:</b> salta al bloque bajo y luego al muro alto.</li>
       <li><b>Escalera:</b> sube los tres peldaños saltando y baja por detrás.</li>
@@ -186,7 +186,7 @@ body{color:#fff;font-family:'Nunito',system-ui,sans-serif;touch-action:none;-web
       <li><b>Cajas misteriosas:</b> cógelas y pulsa USAR (o E). Te dan escudo, rayo, puño o turbo.</li>
       <li><b>Cámara y emotes:</b> los botones de arriba a la derecha (o C y T).</li>
      </ul>
-     <div class="chips"><span>LULAV · לוּלָב</span><span>ETROG · אֶתְרוֹג</span><span>SUCÁ · סֻכָּה</span><span>PALMERA · דֶּקֶל</span><span>GRANADA · רִמּוֹן</span><span>UVAS · עֲנָבִים</span><span>ESTRELLA · כּוֹכָב</span><span>LUNA · יָרֵחַ</span><span>TORÁ · תּוֹרָה</span><span>FAROL · פָּנָס</span></div>
+     <div class="chips" id="chipsVocab"></div>
      <button class="gbtn" id="helpClose" type="button">¡Entendido!</button>
     </div>
    </div>
@@ -239,7 +239,6 @@ function tex(c){const t=new THREE.CanvasTexture(c);t.anisotropy=MAXANI;return t;
 function rr(x,a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
 const OUT='#1d1238';
 const FONT='"Lilita One", "Nunito", system-ui, sans-serif';
-const FONT_HE='"Rubik", "Arial Hebrew", "Noto Sans Hebrew", "Segoe UI", sans-serif';
 function fo(x,fill,lw){x.fillStyle=fill;x.fill();x.lineWidth=lw||9;x.strokeStyle=OUT;x.lineJoin='round';x.lineCap='round';x.stroke();}
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
@@ -336,10 +335,18 @@ const ICONS={
   x.strokeStyle='#f2c14e';x.lineWidth=5;for(const dx of[-10,0,10]){x.beginPath();x.moveTo(150+dx,280);x.lineTo(150+dx*1.4,298);x.stroke();}
  }
 };
-const ITEMS=[
- {w:'PALMERA',he:'דֶּקֶל',i:'palmera',x:['LULAV']},{w:'LULAV',he:'לוּלָב',i:'lulav',x:['PALMERA']},{w:'ETROG',he:'אֶתְרוֹג',i:'etrog'},{w:'SUCÁ',he:'סֻכָּה',i:'suca'},
- {w:'ESTRELLA',he:'כּוֹכָב',i:'estrella'},{w:'LUNA',he:'יָרֵחַ',i:'luna'},{w:'UVAS',he:'עֲנָבִים',i:'uvas'},{w:'GRANADA',he:'רִמּוֹן',i:'granada'},{w:'TORÁ',he:'תּוֹרָה',i:'tora'},{w:'FAROL',he:'פָּנָס',i:'farol'}
-];
+/* Bancos de palabras por sonido del habla, elegibles con ?fonema= en el
+   enlace (por caso, desde la ficha). Palabras corrientes, con el sonido
+   diana, evitando parecerse demasiado entre sí dentro del mismo banco. */
+const FONEMAS={
+ r:{n:'Sonido R',items:['RANA','RATÓN','CARRO','PERRO','GORRA','TORRE','RUEDA','ROPA','REGALO','GORRO']},
+ s:{n:'Sonido S',items:['SOL','CASA','MESA','OSO','SOPA','VASO','ROSA','PISO','SEIS','SAPO']},
+ l:{n:'Sonido L',items:['LUNA','PELO','SAL','LOBO','PALA','LECHE','LIMÓN','SILLA','VELA','LORO']},
+ k:{n:'Sonido K',items:['CAMA','COCHE','CUNA','QUESO','COMETA','VACA','COCO','CANGURO','QUINCE','CUBO']},
+ ch:{n:'Sonido CH',items:['CHOCOLATE','NOCHE','CHICO','MOCHILA','LECHUGA','CUCHARA','CHAQUETA','OCHO','CHAPA','COCHE']}
+};
+const FONEMA=(()=>{try{const v=(new URLSearchParams(location.search).get('fonema')||'r').toLowerCase();return FONEMAS[v]?v:'r';}catch(e){return 'r';}})();
+const ITEMS=FONEMAS[FONEMA].items.map(w=>({w}));
 
 /* ---------- world constants ---------- */
 const LANES=5,LW=2.4,W=LANES*LW,P0=-40,P1=9.2,SPAWN=-39.1,BH=3.0,BD=1.6,HERO_Z=5;
@@ -429,7 +436,7 @@ function glow(color,s){const m=new THREE.Sprite(new THREE.SpriteMaterial({map:GL
  for(let i=0;i<46;i++){const m=new THREE.Mesh(new THREE.CylinderGeometry(.16,.1,Wd+2+rnd()*2,6),new THREE.MeshStandardMaterial({color:greens[i%4],roughness:.9}));m.rotation.z=Math.PI/2+(rnd()-.5)*.25;m.rotation.y=(rnd()-.5)*.3;m.position.set((rnd()-.5)*1.5,H+.1+rnd()*.5,-D/2+rnd()*D);g.add(m);}
  // banner
  const bc=mk(1024,200),bx=bc.getContext('2d');rr(bx,8,8,1008,184,30);bx.fillStyle='#2238e0';bx.fill();bx.lineWidth=10;bx.strokeStyle='#ffd23f';bx.stroke();
- bx.font='120px '+FONT;bx.textAlign='center';bx.textBaseline='middle';bx.lineWidth=14;bx.strokeStyle=OUT;bx.lineJoin='round';bx.strokeText('JAG SAMÉAJ',512,108);bx.fillStyle='#ffe14d';bx.fillText('JAG SAMÉAJ',512,108);
+ bx.font='120px '+FONT;bx.textAlign='center';bx.textBaseline='middle';bx.lineWidth=14;bx.strokeStyle=OUT;bx.lineJoin='round';bx.strokeText('¡VAMOS!',512,108);bx.fillStyle='#ffe14d';bx.fillText('¡VAMOS!',512,108);
  const ban=new THREE.Mesh(new THREE.PlaneGeometry(9,1.76),new THREE.MeshBasicMaterial({map:tex(bc),transparent:true}));ban.position.set(0,7.2,-D/2+.3);g.add(ban);
  // hanging fruit
  const fr=[0xe63946,0xffd23f,0xff8c42,0x8e44ad];
@@ -530,31 +537,12 @@ const sideTex=(()=>{const c=mk(256,256);blockBase(c.getContext('2d'),256,256,.5)
 const sideMats=PALS.map(p=>{PAL=p;const c=mk(256,256);blockBase(c.getContext('2d'),256,256,.5);return new THREE.MeshBasicMaterial({map:tex(c),transparent:true});});PAL=PALS[0];
 let sideMat=sideMats[0];
 const ghostMat=new THREE.MeshStandardMaterial({color:0x3dff7a,transparent:true,opacity:.28,emissive:0x1f9e45,emissiveIntensity:.8,depthWrite:false});
-function fitText(x,text,max,start,font){font=font||FONT;const pre=font===FONT_HE?'800 ':'';let fs=start;x.font=pre+fs+'px '+font;while(x.measureText(text).width>max&&fs>30){fs-=4;x.font=pre+fs+'px '+font;}return fs;}
+function fitText(x,text,max,start,font){font=font||FONT;let fs=start;x.font=fs+'px '+font;while(x.measureText(text).width>max&&fs>30){fs-=4;x.font=fs+'px '+font;}return fs;}
 function outlined(x,text,cx,cy,fs,fill,stroke,glowC){x.textAlign='center';x.textBaseline='middle';x.lineJoin='round';x.fillStyle=stroke;x.fillText(text,cx,cy+fs*.1);if(glowC){x.shadowColor=glowC;x.shadowBlur=20;}x.lineWidth=fs*.17;x.strokeStyle=stroke;x.strokeText(text,cx,cy);x.shadowBlur=0;x.fillStyle=fill;x.fillText(text,cx,cy);}
 const wordCache=new Map(),clueCache=new Map();
 function faceMats(c){const t=tex(c);return{solid:new THREE.MeshBasicMaterial({map:t,transparent:true}),
   ghost:new THREE.MeshStandardMaterial({map:t,color:0x9dffb8,transparent:true,opacity:.55,emissive:0x1f9e45,emissiveIntensity:.6,depthWrite:false})};}
 const FACE_H=Math.round(512*BH/(LW-.12));
-function picMat(item){
- const k=PAL.n+'pic:'+item.i;
- if(!wordCache.has(k)){
-  const c=mk(512,FACE_H),x=c.getContext('2d');blockBase(x,512,FACE_H,.82);
-  rr(x,40,FACE_H/2-216,432,432,48);x.fillStyle='rgba(255,255,255,.93)';x.fill();x.lineWidth=8;x.strokeStyle='#3a0a6e';x.stroke();
-  x.save();x.translate(256-150*1.3,FACE_H/2-195);x.scale(1.3,1.3);ICONS[item.i](x);x.restore();
-  wordCache.set(k,faceMats(c));
- }
- return wordCache.get(k);
-}
-function heMat(item){
- const k=PAL.n+'he:'+item.he;
- if(!wordCache.has(k)){
-  const c=mk(512,FACE_H),x=c.getContext('2d');blockBase(x,512,FACE_H,.82);
-  const fs=fitText(x,item.he,512*.9,170,FONT_HE);x.direction='rtl';outlined(x,item.he,256,FACE_H/2,fs,'#fff',PAL.t,PAL.g);
-  wordCache.set(k,faceMats(c));
- }
- return wordCache.get(k);
-}
 function wordMat(word0){
  const word=word0,ck=PAL.n+'w:'+word0;
  if(!wordCache.has(ck)){
@@ -577,17 +565,15 @@ function signMat(title,color,draw){
  x.save();x.translate(252-150*1.4,150);x.scale(1.4,1.4);draw(x);x.restore();
  return new THREE.MeshBasicMaterial({map:tex(c),transparent:true});
 }
-function clueMat(item){if(!clueCache.has(item.i))clueCache.set(item.i,signMat('¿QUÉ ES?','#ff3b4e',ICONS[item.i]));return clueCache.get(item.i);}
-function heClueMat(item){
- const k='he:'+item.i;
- if(!clueCache.has(k))clueCache.set(k,signMat('¿CUÁL ES?','#ff3b4e',x=>{
-  rr(x,0,40,300,220,30);x.fillStyle='#2238e0';x.fill();x.lineWidth=8;x.strokeStyle=OUT;x.stroke();
-  const fs=fitText(x,item.he,270,130,FONT_HE);x.direction='rtl';x.textAlign='center';x.textBaseline='middle';x.lineJoin='round';
-  x.lineWidth=fs*.14;x.strokeStyle=OUT;x.strokeText(item.he,150,152);x.fillStyle='#ffe14d';x.fillText(item.he,150,152);x.direction='ltr';
+function buscaMat(item){
+ const k='busca:'+item.w;
+ if(!clueCache.has(k))clueCache.set(k,signMat('BUSCA:','#ff3b4e',x=>{
+  const fs=fitText(x,item.w,270,90);x.textAlign='center';x.textBaseline='middle';x.lineJoin='round';
+  x.lineWidth=fs*.16;x.strokeStyle=OUT;x.strokeText(item.w,150,150);x.fillStyle='#ffe14d';x.fillText(item.w,150,150);
  }));
  return clueCache.get(k);
 }
-const labelOf=(w)=>w.mode==='es'?w.item.w:w.item.he+' · '+w.item.w;
+const labelOf=(w)=>w.item.w;
 function drawSteps(x){
  x.beginPath();x.rect(30,196,100,96);fo(x,'#b25bff',8);
  x.beginPath();x.rect(158,112,112,180);fo(x,'#7a2fe0',8);
@@ -641,19 +627,17 @@ function addWallSpikes(w,cols){
   w.parts.push({m:g,b});w.frontOff=Math.max(w.frontOff,BD/2+1.0);
  }
 }
-let wordN=0;
 function spawnWord(withSpikes){
- const mode=['es','he','rev'][wordN++%3];
  let item;do{item=ITEMS[Math.floor(Math.random()*ITEMS.length)];}while(item===lastItem);lastItem=item;
- const pool=shuffle(ITEMS.filter(o=>o!==item&&!(item.x||[]).includes(o.w))).slice(0,LANES-1);
+ const pool=shuffle(ITEMS.filter(o=>o!==item)).slice(0,LANES-1);
  const words=shuffle([item,...pool]);
- const w=newWall('word',waveSpeed());w.item=item;w.correct=words.indexOf(item);w.mode=mode;
- const face=o=>mode==='es'?wordMat(o.w):mode==='he'?heMat(o):picMat(o);
- w.ghostFace=face(item).ghost;
- words.forEach((o,i)=>addPart(w,blockGeo,[sideMat,sideMat,sideMat,sideMat,face(o).solid,sideMat],laneX(i),BH,BD,0,'col'));
+ const w=newWall('word',waveSpeed());w.item=item;w.correct=words.indexOf(item);
+ w.tSpawn=performance.now();w.rtDone=false;w.tDecided=null;
+ w.ghostFace=wordMat(item.w).ghost;
+ words.forEach((o,i)=>addPart(w,blockGeo,[sideMat,sideMat,sideMat,sideMat,wordMat(o.w).solid,sideMat],laneX(i),BH,BD,0,'col'));
  w.parts[w.correct].b.ghost=true;
  if(withSpikes)addWallSpikes(w,shuffle([0,1,2,3,4].filter(i=>i!==w.correct)).slice(0,2));
- addSign(w,mode==='rev'?heClueMat(item):clueMat(item),BH,1);
+ addSign(w,buscaMat(item),BH,1);
 }
 function revealWall(w){w.revealed=true;const p=w.parts[w.correct];p.b.ghost=true;p.m.material=[ghostMat,ghostMat,ghostMat,ghostMat,w.ghostFace,ghostMat];}
 const GAP_RH=1.3,gapGeo=new THREE.BoxGeometry(LW-.12,GAP_RH,BD);
@@ -877,7 +861,7 @@ function updateBoxes(dt){
   if(f.m.material)f.m.material.opacity=k;
   if(f.life<=0){scene.remove(f.m);fx.splice(i,1);}}
 }
-const EMOTES=['¡Jag Saméaj!','¡Hola!','GG','¡Ups!','¡Vamos!','¡Lulav!'];
+const EMOTES=['¡Genial!','¡Hola!','GG','¡Ups!','¡Vamos!','¡Otra vez!'];
 const bubbleCache=new Map();
 function bubbleMat(t){if(!bubbleCache.has(t)){const c=mk(512,180),x=c.getContext('2d');rr(x,10,10,492,130,40);x.fillStyle='#fff';x.fill();x.lineWidth=8;x.strokeStyle=OUT;x.stroke();x.beginPath();x.moveTo(230,138);x.lineTo(256,176);x.lineTo(282,138);x.closePath();x.fillStyle='#fff';x.fill();x.stroke();x.fillRect(232,128,48,10);const fs=fitText(x,t,440,80);x.textAlign='center';x.textBaseline='middle';x.fillStyle=OUT;x.fillText(t,256,78);bubbleCache.set(t,new THREE.SpriteMaterial({map:tex(c),depthTest:false,transparent:true}));}return bubbleCache.get(t);}
 function emote(c,t){if(c.state!=='play')return;if(c.bubble)c.g.remove(c.bubble);const s=new THREE.Sprite(bubbleMat(t||EMOTES[Math.floor(Math.random()*EMOTES.length)]));s.scale.set(2.2,.78,1);s.position.y=3.4;s.renderOrder=11;c.g.add(s);c.bubble=s;c.emoteT=2.2;}
@@ -1002,10 +986,10 @@ const SKINS=[
  {id:'fiesta',name:'Fiesta',cost:140,shirt:0xff5fb0,pants:0x3a1030},
  {id:'neon',name:'Neón',cost:220,shirt:0xa64dff,pants:0x1c0b33},
  {id:'sombra',name:'Sombra',cost:220,shirt:0x1a1a22,pants:0x0a0a0e},
- {id:'bp5',name:'Sucot Dorado',cost:0,shirt:0xffe14d,pants:0x5a3d00,bp:5},
+ {id:'bp5',name:'Dorado especial',cost:0,shirt:0xffe14d,pants:0x5a3d00,bp:5},
  {id:'bp10',name:'Campeón',cost:0,shirt:0x34e0c8,pants:0x0a3a34,bp:10}
 ];
-const PROFILE_KEY='sucadash-profile-v1';
+const PROFILE_KEY='fonodash-profile-v1';
 function loadProfile(){
  try{const raw=localStorage.getItem(PROFILE_KEY);if(raw){const p=JSON.parse(raw);if(p&&typeof p==='object')return{coins:p.coins|0,xp:p.xp|0,owned:Array.isArray(p.owned)&&p.owned.length?p.owned:['default'],equipped:p.equipped||'default',char:p.char||'clasico'};}}catch(_){}
  return{coins:0,xp:0,owned:['default'],equipped:'default',char:'clasico'};
@@ -1018,12 +1002,12 @@ function checkBpUnlocks(){SKINS.forEach(sk=>{if(sk.bp&&sk.bp<=bpLevel()&&!profil
 checkBpUnlocks();saveProfile();
 function applySkinVisual(c,sk){const sm=toon(sk.shirt),pm=toon(sk.pants);c.shirtParts.forEach(m=>m.material=sm);c.pantsParts.forEach(m=>m.material=pm);}
 const CHARS=[
- {id:'clasico',name:'Clásico',skin:0xffd1a6,hair:0x6b3a1e,kipa:'knit',katan:'blue',peot:true},
- {id:'rabino',name:'Rabino',skin:0xf2c38f,hair:0xcfc9bd,kipa:0x15151c,tallit:'black',tefillin:true,beard:0xe8e4dc,peot:true},
- {id:'sombrero',name:'Sombrero',skin:0xf2c38f,hair:0x1c1410,hat:true,peot:true,katan:true},
+ {id:'clasico',name:'Clásico',skin:0xffd1a6,hair:0x6b3a1e},
+ {id:'gorra',name:'Gorra',skin:0xf2c38f,hair:0x1c1410,hat:true},
  {id:'mia',name:'Mia',skin:0xe0a878,hair:0x2a1a12,girl:true,bow:0xff66c4},
  {id:'luli',name:'Luli',skin:0xc98b5e,hair:0x9a4a1c,girl:true,bow:0xffe14d},
- {id:'samurei',name:'Samurei',skin:0x8d5a3b,hair:0x1c1410,kipa:0x15151c,peot:true,tefillin:true,beard:0x1c1410}
+ {id:'capitan',name:'Capitán',skin:0xf2c38f,hair:0xcfc9bd,hat:true,beard:0xe8e4dc},
+ {id:'aventurero',name:'Aventurero',skin:0x8d5a3b,hair:0x1c1410,beard:0x1c1410}
 ];
 const charOf=id=>CHARS.find(c=>c.id===id)||CHARS[0];
 const heroOpts=ch=>Object.assign({tagColor:'#ffe14d',color:0xe53945,leg:0x1f2a44,lane:2,z:HERO_Z,hero:true},ch,{name:'TÚ'});
@@ -1037,13 +1021,13 @@ function setHeroLook(ch){
 }
 applySkinVisual(hero,SKINS.find(s=>s.id===profile.equipped)||SKINS[0]);
 [
- {name:'Sparkle Bug',color:0x3fa9f5,lane:0,z:3.1,kipa:'knit',katan:true,peot:true,hair:0xd9a441},
- {name:'Funny Eel',color:0xffb703,lane:1,z:6.6,hat:true,peot:true,katan:true,hair:0x1c1410,leg:0x15151c},
- {name:'Mia_Etrog',color:0x8338ec,lane:3,z:3.4,skin:0xe0a878,girl:true,hair:0x2a1a12,bow:0xff66c4,leg:0x3a2a6e},
- {name:'Rabi Turbo',color:0x06d6a0,lane:4,z:6.2,kipa:0x15151c,tallit:'black',tefillin:true,beard:0xe8e4dc,hair:0xcfc9bd,peot:true,leg:0x15151c},
+ {name:'Sparkle Bug',color:0x3fa9f5,lane:0,z:3.1,hat:true,hair:0xd9a441},
+ {name:'Funny Eel',color:0xffb703,lane:1,z:6.6,hat:true,hair:0x1c1410,leg:0x15151c},
+ {name:'Mia Estrella',color:0x8338ec,lane:3,z:3.4,skin:0xe0a878,girl:true,hair:0x2a1a12,bow:0xff66c4,leg:0x3a2a6e},
+ {name:'Turbo Max',color:0x06d6a0,lane:4,z:6.2,beard:0xe8e4dc,hair:0xcfc9bd,leg:0x15151c},
  {name:'Luli2015',color:0xff66c4,lane:1,z:2.7,skin:0xc98b5e,girl:true,hair:0x9a4a1c,bow:0xffe14d,leg:0x1f3a7a},
- {name:'Frosty Cab',color:0x6c7cff,lane:3,z:7.4,kipa:0x2b59ff,tallit:'blue',hair:0x3b2414},
- {name:'SAMUREI',color:0xfb8500,lane:4,z:4.0,skin:0x8d5a3b,kipa:0x15151c,peot:true,tefillin:true,beard:0x1c1410,hair:0x1c1410,leg:0x15151c}
+ {name:'Frosty Cab',color:0x6c7cff,lane:3,z:7.4,hat:true,hair:0x3b2414},
+ {name:'Rocket Rex',color:0xfb8500,lane:4,z:4.0,skin:0x8d5a3b,beard:0x1c1410,hair:0x1c1410,leg:0x15151c}
 ].forEach(o=>{o.off=(Math.random()-.5)*1.0;makeChar(o);});
 
 
@@ -1057,6 +1041,60 @@ function burst(p,cols){cols=cols||PCOL;for(let i=0;i<40;i++){const m=new THREE.M
 const $=id=>document.getElementById(id);
 const hud={streak:$('streak'),elim:$('elim'),timer:$('timer'),pop:$('pop'),big:$('popBig'),sub:$('popSub'),start:$('start')};
 let lastMiss='',hits=0,streak=0,elims=0,lives=2,over=false,runT=0,overT=0;
+/* medidas para logopedia: un intento por muro de palabra que le llega al
+   jugador (bien o mal), con el tiempo de reacción (desde que se ve el
+   muro hasta que se mete en el carril correcto por primera vez). */
+let intentos=[];
+function logIntento(w,ok){intentos.push({palabra:w.item.w,ok,rt:w.tDecided!=null?Math.round(w.tDecided-w.tSpawn):null});}
+
+/* ======================================================================
+   ENVÍO AL GABINETE (mismo sistema que el resto de materiales de Fönia).
+   Sin ?caso= en el enlace no se manda nada: se puede jugar suelto.
+   ====================================================================== */
+const Q=(()=>{try{return new URLSearchParams(location.search)}catch(e){return {get:()=>null}}})();
+const CASO=(()=>{const v=(Q.get('caso')||'').toLowerCase().trim();return /^[0a-i]{1,24}$/.test(v)?v:''})();
+const TERAPEUTA=(()=>{const v=(Q.get('t')||'').trim();return /^[A-Za-zÀ-ÿ .'-]{2,40}$/.test(v)?v:''})();
+const FONIA={clave:'7b0fea07-2a73-4621-b43b-85f1342c0dc9',
+ correo:'ia.logoped.ia0@gmail.com',
+ panel:'https://script.google.com/macros/s/AKfycbw3rqxu2yEeF8lxhl8plc3rgdinbzTyEMuESPt9AwbM40mre6vlGzfYcRNVSG_VwyTW/exec',
+ registro:'https://fonia-buzon.vercel.app/api/registro',
+ version:'1.0.0',material:'FonoDash',slug:'fonodash'};
+const FONIA_COLA='fonia-cola-'+FONIA.slug;
+function _dos(n){return ('0'+n).slice(-2)}
+function foniaMomento(d){d=d||new Date();return _dos(d.getDate())+'/'+_dos(d.getMonth()+1)+'/'+d.getFullYear()+' '+_dos(d.getHours())+':'+_dos(d.getMinutes())}
+function foniaTexto(filas){
+ function fila(p){return '  '+p[0]+' '+new Array(Math.max(2,24-p[0].length)+1).join('.')+' '+p[1]}
+ return 'GABINETE FÖNIA · REGISTRO DE FAMILIA\n========================================\n'+
+  fila(['Caso',CASO])+'\n'+fila(['Logopeda',TERAPEUTA||'sin asignar'])+'\n'+fila(['Material',FONIA.material])+'\n'+fila(['Enviado',foniaMomento()])+'\n\n'+
+  'LO QUE HAN HECHO\n'+filas.map(fila).join('\n')+'\n\nSin datos identificativos: este registro se identifica solo por el código de caso.'}
+function foniaId(){return 'c'+CASO+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6)}
+function foniaCola(){try{return JSON.parse(localStorage.getItem(FONIA_COLA)||'[]')}catch(e){return[]}}
+function foniaGuarda(reg){try{const c=foniaCola();c.push(reg);localStorage.setItem(FONIA_COLA,JSON.stringify(c.slice(-20)))}catch(e){}}
+function foniaLimpia(){try{localStorage.removeItem(FONIA_COLA)}catch(e){}}
+function foniaAlPanel(reg){if(!FONIA.panel||!reg.id)return;try{fetch(FONIA.panel,{method:'POST',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({id:reg.id,caso:reg.caso,terapeuta:reg.terapeuta,material:FONIA.slug,contenido:reg.texto,version:FONIA.version})}).catch(()=>{})}catch(e){}}
+async function foniaAlRegistro(reg){if(!FONIA.registro||!reg.id)throw new Error('sin destino');const r=await fetch(FONIA.registro,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:reg.id,caso:reg.caso,terapeuta:reg.terapeuta,material:FONIA.slug,contenido:reg.texto,version:FONIA.version})});if(!r.ok)throw new Error('rechazado')}
+async function foniaManda(reg){foniaAlPanel(reg);await foniaAlRegistro(reg)}
+async function foniaRevisaCola(){
+ const c=foniaCola();if(!c.length)return;
+ let quedan=c.slice();
+ for(const reg of c){try{await foniaManda(reg);quedan=quedan.filter(x=>x.id!==reg.id)}catch(e){break}}
+ try{if(quedan.length)localStorage.setItem(FONIA_COLA,JSON.stringify(quedan));else foniaLimpia()}catch(e){}
+}
+foniaRevisaCola();
+function enviaResultados(winner){
+ if(!CASO||!intentos.length)return;
+ const bien=intentos.filter(x=>x.ok).length,mal=intentos.length-bien;
+ const mitad=Math.ceil(intentos.length/2),p1=intentos.slice(0,mitad),p2=intentos.slice(mitad);
+ const pct=arr=>arr.length?Math.round(arr.filter(x=>x.ok).length/arr.length*100)+'%':'—';
+ const rts=intentos.filter(x=>x.rt!=null).map(x=>x.rt);
+ const filas=[['Sonido',FONEMAS[FONEMA].n],['Resultado',winner?'Ganó la ronda':'Eliminado'],['Oleada',String(wave)],['Aciertos',bien+' de '+intentos.length],['Duración',fmt(runT)]];
+ if(rts.length)filas.push(['Tiempo de reacción medio',Math.round(rts.reduce((a,b)=>a+b,0)/rts.length)+' ms']);
+ if(p1.length&&p2.length)filas.push(['Fatiga (1ª mitad → 2ª mitad)',pct(p1)+' → '+pct(p2)]);
+ if(mal){const cuenta={};intentos.filter(x=>!x.ok).forEach(x=>cuenta[x.palabra]=(cuenta[x.palabra]||0)+1);
+  filas.push(['Palabras que más cuestan',Object.entries(cuenta).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([w,n])=>w+' ('+n+')').join(', ')]);}
+ const reg={id:foniaId(),caso:CASO,terapeuta:TERAPEUTA,texto:foniaTexto(filas)};
+ foniaManda(reg).catch(()=>foniaGuarda(reg));
+}
 const MAXLIVES=2;
 function drawLives(){[...document.querySelectorAll('#lives i')].forEach((el,i)=>el.classList.toggle('lost',i>=lives));}
 (function(){const pts=[];for(let i=0;i<32;i++){const a=i/32*Math.PI*2,r=i%2?44:50;pts.push((50+Math.cos(a)*r).toFixed(1)+'% '+(50+Math.sin(a)*r).toFixed(1)+'%');}$('badge').style.clipPath='polygon('+pts.join(',')+')';})();
@@ -1084,6 +1122,7 @@ function showBanner(winner){
  const r=grantRewards(winner);
  $('rewardLine').innerHTML='<span><span class="ic"></span> +'+r.coinsEarned+'</span><span>✦ +'+r.xpEarned+' XP</span>';
  $('ban').hidden=false;hud.pop.className='pop';
+ enviaResultados(winner);
 }
 function win(){over=true;overT=T;showBanner(true);burst(new THREE.Vector3(hero.x,hero.y+2,hero.z));burst(new THREE.Vector3(hero.x,hero.y+2.5,hero.z));}
 function loseLife(){
@@ -1091,7 +1130,7 @@ function loseLife(){
  if(lives<=0){over=true;overT=T;hero.power=null;updPowerHud();showBanner(false);}
 }
 function restart(){
- over=false;lives=MAXLIVES;hits=0;streak=0;runT=0;wave=0;lastMiss='';elims=0;drawLives();updScore();$('ban').hidden=true;
+ over=false;lives=MAXLIVES;hits=0;streak=0;runT=0;wave=0;lastMiss='';elims=0;intentos=[];drawLives();updScore();$('ban').hidden=true;
  clearBoxes();for(const c of chars){c.lives=MAXLIVES;c.power=null;c.shield=0;c.turbo=0;}updPowerHud();
  for(const w of walls){scene.remove(w.g);removeOwner(w);}walls.length=0;
  clearSpikes();clearLasers();
@@ -1127,6 +1166,7 @@ $('play').addEventListener('click',()=>{goFull();takeControl();startMusic();});
 $('howBtn').addEventListener('click',()=>{$('help').hidden=false;});
 $('bHelp').addEventListener('click',()=>{$('help').hidden=false;});
 $('helpClose').addEventListener('click',()=>{$('help').hidden=true;});
+$('chipsVocab').innerHTML=ITEMS.map(o=>'<span>'+o.w+'</span>').join('');
  $('bFull').addEventListener('click',toggleFull);
 
 /* ---------- shop & battle pass UI ---------- */
@@ -1334,9 +1374,9 @@ function respawn(c){
  c.g.rotation.set(0,0,0);c.body.rotation.set(0,0,0);
  for(const w of walls)if(w.z+w.frontOff>=c.z-R-2)c.passed.add(w.id);
 }
-function reasonOf(c){const k=c.cause;if(!k)return'¡Te caíste!';if(k==='spike')return'¡Cuidado con los pinchos!';if(k==='laser')return'¡Cuidado con el láser!';if(k==='punch')return'¡Te han dado un puñetazo!';if(k.type==='steps')return'Salta dos veces';if(k.type==='stairs')return'Sube la escalera saltando';if(k.type==='hurdles')return'Salta las vallas';if(k.type==='pistons')return'Pasa cuando el pistón baje';if(k.type==='bounce')return'Pisa el trampolín';if(k.type==='word'){lastMiss=labelOf(k);return'Era '+lastMiss;}return'¡Te caíste!';}
+function reasonOf(c){const k=c.cause;if(!k)return'¡Te caíste!';if(k==='spike')return'¡Cuidado con los pinchos!';if(k==='laser')return'¡Cuidado con el láser!';if(k==='punch')return'¡Te han dado un puñetazo!';if(k.type==='steps')return'Salta dos veces';if(k.type==='stairs')return'Sube la escalera saltando';if(k.type==='hurdles')return'Salta las vallas';if(k.type==='pistons')return'Pasa cuando el pistón baje';if(k.type==='bounce')return'Pisa el trampolín';if(k.type==='word'){lastMiss=labelOf(k);logIntento(k,false);return'Era '+lastMiss;}return'¡Te caíste!';}
 function heroPass(w){
- if(w.type==='word'){hits++;streak++;updScore();pop('¡BIEN!',labelOf(w),'good');}
+ if(w.type==='word'){hits++;streak++;updScore();pop('¡BIEN!',labelOf(w),'good');logIntento(w,true);}
  else pop('¡BIEN!',{steps:'Doble salto',stairs:'Escalera superada',hurdles:'Vallas superadas',pistons:'Pistones superados',bounce:'¡Qué salto!',gap:'¡Por el hueco!'}[w.type]||'¡Bien!','good');
  burst(new THREE.Vector3(hero.x,hero.y+1.6,hero.z));
 }
@@ -1355,6 +1395,7 @@ function update(dt){
   for(const p of w.parts){const b=p.b;if(p.ph!=null){b.h=w.pistH(p,T);p.m.scale.y=b.h/3;p.m.position.y=b.h/2;}b.minZ=w.z+b.dz-b.d/2;b.maxZ=w.z+b.dz+b.d/2;b.minY=yoff+(b.y0||0);b.maxY=b.minY+b.h;b.vz=w.speed;}
   const front=w.z+w.frontOff;
   if(!w.revealed&&front>=(hero.state==='play'?hero.z:minZ)-R-1.2)revealWall(w);
+  if(w.type==='word'&&!w.rtDone&&hero.state==='play'&&laneOf(hero.x)===w.correct){w.tDecided=performance.now();w.rtDone=true;}
   if(!w.spawnedNext&&front>P1-2){w.spawnedNext=true;nextWave();}
   if(w.z>P1+14){scene.remove(w.g);removeOwner(w);walls.splice(i,1);}
  }
