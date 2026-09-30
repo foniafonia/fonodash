@@ -182,7 +182,7 @@ body{color:#fff;font-family:'Nunito',system-ui,sans-serif;touch-action:none;-web
       <li><b>Láseres:</b> los verdes van por el suelo (salta), los rosas son verticales (apártate).</li>
       <li><b>Bordes:</b> los láseres verdes de los lados electrocutan.</li>
       <li><b>Vidas:</b> todos tienen dos. Quien las pierde queda eliminado. Si quedas el último, ¡ganas!</li>
-      <li><b>Doble salto:</b> pulsa saltar otra vez en el aire. Si un muro te empuja al borde, salta dos veces y súbete encima: ¡salvada!</li>
+      <li><b>Plancha:</b> pulsa saltar otra vez en el aire y te lanzas hacia delante. Si un muro te empuja al borde, salta y haz plancha para volver a la plataforma: ¡salvada!</li>
       <li><b>Cajas misteriosas:</b> cógelas y pulsa USAR (o E). Te dan escudo, rayo, puño o turbo.</li>
       <li><b>Cámara y emotes:</b> los botones de arriba a la derecha (o C y T).</li>
      </ul>
@@ -828,6 +828,7 @@ function usePower(c){
  else if(p==='rayo'){
   if(!alive.length)return;
   let t=alive[0],bd=1e9;for(const o of alive){const d=Math.hypot(o.x-c.x,o.z-c.z);if(d<bd){bd=d;t=o;}}
+  if(!c.hero&&hero.state==='play'&&Math.random()<.6)t=hero;
   boltFx(new THREE.Vector3(t.x,16,t.z),new THREE.Vector3(t.x,t.y+1,t.z));
   if(t.shield>0){ringFx(t.x,t.y+1,t.z,0x6be0ff);return;}
   zap(t,'Te ha dado un rayo de '+c.name);if(c.hero)toast('¡Rayo a '+t.name+'!');
@@ -1256,7 +1257,7 @@ function nextCam(){camMode=(camMode+1)%3;toast(CAM_NAMES[camMode]);}
 function jumpC(c){
  if(c.state!=='play'||c.stun>0)return;
  if(c.onGround){c.vy=JV;c.carry=c.ground?c.ground.vz:0;c.onGround=false;c.air=1;}
- else if(c.air>0){c.air=0;c.vy=8.8;c.carry=0;ringFx(c.x,c.y+.1,c.z);}
+ else if(c.air>0){c.air=0;c.vy=4.2;c.carry=0;c.dive=.5;c.diving=true;c.dvx=-Math.sin(c.yaw)*11;c.dvz=-Math.cos(c.yaw)*11;ringFx(c.x,c.y+.1,c.z);}
 }
 function jump(){if(over)return;takeControl();jumpC(hero);}
 new IntersectionObserver(e=>{visible=e[0].isIntersecting;}).observe(stage);
@@ -1294,6 +1295,8 @@ function zap(c,msg){
 function knock(c,dx,dz,p,cause,down){if(c.shield>0)return;c.vx=dx*p;c.vz=dz*p;c.vy=down?3.5:6;c.stun=down||.5;c.down=down||0;c.imm=(down||.5)+.5;c.onGround=false;c.carry=0;c.cause=cause;if(c.hero&&!reduced)shake=.3;}
 function charPhys(c,dt,ivx,ivz){
  if(c.imm>0)c.imm-=dt;
+ if(c.dive>0){c.dive-=dt;if(c.stun<=0){ivx=c.dvx;ivz=c.dvz;}}
+ if(c.rec>0){c.rec-=dt;ivx*=.15;ivz*=.15;}
  if(c.stun>0){c.stun-=dt;const f=Math.pow(.25,dt);c.vx*=f;c.vz*=f;}else{c.vx=ivx;c.vz=ivz;}
  if(c.onGround&&c.ground)c.z+=c.ground.vz*dt;else if(!c.onGround)c.z+=c.carry*dt;
  const py=c.y;
@@ -1304,6 +1307,7 @@ function charPhys(c,dt,ivx,ivz){
  if(c.z<ZMIN){if(c.stun<=0){c.vx=0;c.vz=7;c.stun=.3;}if(c.z<ZMIN-.6)c.z=ZMIN-.6;}
  if(c.y<=0&&py>=-.3&&c.z<=P1&&c.z>=P0){c.y=0;c.vy=0;c.onGround=true;c.carry=0;}
  if(c.y<-.25&&c.z<P1+R&&c.z>P0+1)c.z=P1+R;
+ if(c.stun>0||c.state!=='play')c.dive=0;
  for(const b of solids){
   if(b.ghost||b.maxY<=.05)continue;
   if(c.x+R<=b.minX||c.x-R>=b.maxX||c.z+R<=b.minZ||c.z-R>=b.maxZ||c.y+CH<=b.minY||c.y>=b.maxY)continue;
@@ -1313,19 +1317,21 @@ function charPhys(c,dt,ivx,ivz){
   if(Math.min(px1,px2)<Math.min(pz1,pz2))c.x+=px1<px2?px1:-px2;
   else{c.z+=pz1<pz2?pz1:-pz2;if(pz1<pz2&&b.vz>0&&b.owner&&b.owner.type)c.cause=b.owner;}
  }
+ if(c.diving&&(c.onGround||c.dive<=0&&c.vy<=0&&c.y<.05)){c.diving=false;c.dive=0;if(c.onGround)c.rec=.35;}
 }
 
 /* ---------- AI ---------- */
 function threat(c){for(const w of walls){if(!c.passed.has(w.id)&&w.z+w.backOff<c.z+R)return w;}return null;}
+function botUp(){return Math.min(.3,(wave-1)*.012);}
 function aiMove(c,dt){
  if(!c.wT||T>c.wT){c.wT=T+3+Math.random()*4;c.homeZ=c.hero?-18+Math.random()*24:-30+Math.random()*37;}
  let tx=c.tx,tz=c.homeZ;
  const w=threat(c);
  if(w&&w.type==='word'){
-  if(c.plan!==w.id&&w.z>(c.hero?-15:-19)){c.plan=w.id;c.col=Math.random()<(c.hero?.8:.62)?w.correct:Math.floor(Math.random()*LANES);}
+  if(c.plan!==w.id&&w.z>(c.hero?-15:-19)){c.plan=w.id;c.col=Math.random()<(c.hero?.8:Math.min(.97,.62+botUp()))?w.correct:Math.floor(Math.random()*LANES);}
   if(c.plan===w.id)tx=laneX(c.col)+c.off;
  }else if(w&&w.type==='steps'){
-  if(c.plan!==w.id&&w.z>-17){c.plan=w.id;const non=[0,1,2,3,4].filter(i=>!w.steps.includes(i));c.col=Math.random()<(c.hero?.9:.7)?w.steps[Math.floor(Math.random()*3)]:non[Math.floor(Math.random()*non.length)];c.j1=false;c.j2=false;c.j2t=0;}
+  if(c.plan!==w.id&&w.z>-17){c.plan=w.id;const non=[0,1,2,3,4].filter(i=>!w.steps.includes(i));c.col=Math.random()<(c.hero?.9:Math.min(.97,.7+botUp()))?w.steps[Math.floor(Math.random()*3)]:non[Math.floor(Math.random()*non.length)];c.j1=false;c.j2=false;c.j2t=0;}
   if(c.plan===w.id){
    tx=laneX(c.col)+c.off*.4;
    const sf=w.z+w.frontOff;
@@ -1335,17 +1341,17 @@ function aiMove(c,dt){
   }
  }
  else if(w&&w.type==='gap'){
-  if(c.plan!==w.id&&w.z>-19){c.plan=w.id;c.col=Math.random()<(c.hero?.9:.7)?w.passCols[Math.floor(Math.random()*w.passCols.length)]:Math.floor(Math.random()*LANES);}
+  if(c.plan!==w.id&&w.z>-19){c.plan=w.id;c.col=Math.random()<(c.hero?.9:Math.min(.97,.7+botUp()))?w.passCols[Math.floor(Math.random()*w.passCols.length)]:Math.floor(Math.random()*LANES);}
   if(c.plan===w.id)tx=laneX(c.col)+c.off*.3;
  }
  else if(w&&w.type==='bounce'){
-  if(c.plan!==w.id&&w.z>-18){c.plan=w.id;const non=[0,1,2,3,4].filter(i=>!w.pads.includes(i));c.col=Math.random()<(c.hero?.9:.72)?w.pads[Math.floor(Math.random()*w.pads.length)]:non[Math.floor(Math.random()*non.length)];}
+  if(c.plan!==w.id&&w.z>-18){c.plan=w.id;const non=[0,1,2,3,4].filter(i=>!w.pads.includes(i));c.col=Math.random()<(c.hero?.9:Math.min(.97,.72+botUp()))?w.pads[Math.floor(Math.random()*w.pads.length)]:non[Math.floor(Math.random()*non.length)];}
   if(c.plan===w.id)tx=laneX(c.col)+c.off*.3;
  }else if(w&&w.type==='hurdles'){
   if(c.plan!==w.id){c.plan=w.id;}
-  for(const p of w.parts){const f=w.z+p.b.dz+p.b.d/2;if(c.onGround&&!c.hj.has(p.b)&&f>=c.z-R-w.speed*.13&&f<c.z){c.hj.add(p.b);if(Math.random()<(c.hero?.92:.75))jumpC(c);}}
+  for(const p of w.parts){const f=w.z+p.b.dz+p.b.d/2;if(c.onGround&&!c.hj.has(p.b)&&f>=c.z-R-w.speed*.13&&f<c.z){c.hj.add(p.b);if(Math.random()<(c.hero?.92:Math.min(.97,.75+botUp())))jumpC(c);}}
  }else if(w&&w.type==='stairs'){
-  if(c.plan!==w.id&&w.z>-17){c.plan=w.id;c.ok=Math.random()<(c.hero?.9:.72);c.j1=false;c.lastStair=null;c.j2t=0;}
+  if(c.plan!==w.id&&w.z>-17){c.plan=w.id;c.ok=Math.random()<(c.hero?.9:Math.min(.97,.72+botUp()));c.j1=false;c.lastStair=null;c.j2t=0;}
   if(c.plan===w.id){
    const sf=w.z+w.frontOff;
    if(!c.j1&&c.onGround&&!c.ground&&sf>=c.z-R-w.speed*.15){c.j1=true;if(c.ok)jumpC(c);}
@@ -1355,7 +1361,7 @@ function aiMove(c,dt){
   }
  }else if(w&&w.type==='pistons'){
   const eta=Math.max(0,(c.z-R-(w.z+w.frontOff))/w.speed);
-  if(c.plan!==w.id&&w.z>-20){c.plan=w.id;c.ok=Math.random()<(c.hero?.85:.65);c.col=Math.floor(Math.random()*LANES);}
+  if(c.plan!==w.id&&w.z>-20){c.plan=w.id;c.ok=Math.random()<(c.hero?.85:Math.min(.97,.65+botUp()));c.col=Math.floor(Math.random()*LANES);}
   if(c.plan===w.id){
    if(c.ok&&eta>.7){let bh=9;w.pist.forEach((p,i)=>{const h=w.pistH(p,T+eta);if(h<bh){bh=h;c.col=i;}});}
    tx=laneX(c.col)+c.off*.3;
@@ -1363,6 +1369,8 @@ function aiMove(c,dt){
    if(c.onGround&&c.ok&&eta<.16&&hN>.4&&hN<1.35&&!c.hj.has(pb.b)){c.hj.add(pb.b);jumpC(c);}
   }
  }
+ if(!c.power&&(!w||w.z<-21)){let bb=null,bd=1e9;for(const b of boxes){const d=Math.hypot(b.x-c.x,b.z-c.z);if(d<bd){bd=d;bb=b;}}if(bb&&bd<13){tx=bb.x;tz=bb.z;}}
+ else if(c.power==='puño'&&(!w||w.z<-21)){let tg=null,td=1e9;for(const o of chars){if(o===c||o.state!=='play')continue;const d=Math.hypot(o.x-c.x,o.z-c.z);if(d<td){td=d;tg=o;}}if(tg&&td<9){tx=tg.x;tz=tg.z;}}
  for(const s of spikes){
   if(s.t<.5||!s.up)continue;
   if(Math.abs(c.z-s.z)<1.5&&Math.abs(c.x-s.x)<2.8&&Math.abs(tx-c.x)>.3&&Math.sign(tx-c.x)===Math.sign(s.x-c.x)){tz=s.z+(c.z>=s.z?1.8:-1.8);tx=c.x;}
@@ -1370,16 +1378,16 @@ function aiMove(c,dt){
  }
  for(const b of beams){
   const dz=c.z-b.z;if(dz<0||dz>9)continue;
-  if(b.type==='h'){if(c.onGround&&!b.aiJ.has(c)&&dz<=R+.15+b.speed*.13){b.aiJ.add(c);if(Math.random()<(c.hero?.9:.72))jumpC(c);}}
+  if(b.type==='h'){if(c.onGround&&!b.aiJ.has(c)&&dz<=R+.15+b.speed*.13){b.aiJ.add(c);if(Math.random()<(c.hero?.9:Math.min(.97,.72+botUp())))jumpC(c);}}
   else for(const x of b.xs){
    if(Math.abs(c.x-x)<1.2&&dz<7){
-    if(!b.aiOk.has(c))b.aiOk.set(c,Math.random()<(c.hero?.9:.72));
+    if(!b.aiOk.has(c))b.aiOk.set(c,Math.random()<(c.hero?.9:Math.min(.97,.72+botUp())));
     if(b.aiOk.get(c)){let d=c.x>=x?1:-1;if(Math.abs(x+d*1.7)>W/2-.5)d=-d;tx=x+d*1.7;tz=c.z;}
    }
   }
  }
  const pushW=c.cause&&c.cause.type?c.cause:null;
- if(pushW&&c.onGround&&!c.ground&&c.z>P1-1.1&&Math.abs(pushW.z+pushW.frontOff-(c.z-R))<.4){if(c.salvFor!==pushW.id){c.salvFor=pushW.id;c.salv=Math.random()<(c.hero?.85:.45);}if(c.salv)jumpC(c);}
+ if(pushW&&c.onGround&&!c.ground&&c.z>P1-1.1&&Math.abs(pushW.z+pushW.frontOff-(c.z-R))<.4){if(c.salvFor!==pushW.id){c.salvFor=pushW.id;c.salv=Math.random()<(c.hero?.85:Math.min(.97,.45+botUp()));}if(c.salv)jumpC(c);}
  if(c.salv&&!c.onGround){if(c.air>0&&c.vy<1)jumpC(c);tz=c.z-6;}
  if(c.onGround&&c.ground&&c.ground.owner&&c.ground.owner.type&&!['steps','stairs','bounce'].includes(c.ground.owner.type))tz=c.z-5;
  if(c.onGround&&c.z<P1-2)c.salv=false;
@@ -1470,7 +1478,7 @@ function update(dt){
   if(c.state==='play'){
    if(c.down>0)c.down-=dt;
    const lying=c.down>.18;
-   c.body.rotation.x+=((lying?-1.45:c.stun>0?-.5:0)-c.body.rotation.x)*Math.min(1,dt*(lying?14:8));
+   c.body.rotation.x+=((lying?-1.45:c.diving?-1.3:c.stun>0?-.5:0)-c.body.rotation.x)*Math.min(1,dt*(lying?14:8));
    if(lying)c.body.position.y=.3;
    if(sp>.6&&c.stun<=0)c.yaw=angLerp(c.yaw,Math.atan2(-c.vx,-c.vz),Math.min(1,dt*10));else c.yaw=angLerp(c.yaw,0,Math.min(1,dt*3));
    c.g.rotation.y=c.yaw;
