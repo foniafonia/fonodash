@@ -629,18 +629,18 @@ function addWallSpikes(w,cols){
 }
 function spawnWord(withSpikes){
  let item;do{item=ITEMS[Math.floor(Math.random()*ITEMS.length)];}while(item===lastItem);lastItem=item;
- const pool=shuffle(ITEMS.filter(o=>o!==item)).slice(0,LANES-1);
- const words=shuffle([item,...pool]);
- const w=newWall('word',waveSpeed());w.item=item;w.correct=words.indexOf(item);
+ const pool=shuffle(ITEMS.filter(o=>o!==item)).slice(0,LANES-2);
+ const words=shuffle([item,item,...pool]);
+ const w=newWall('word',waveSpeed());w.item=item;w.corrects=words.map((o,i)=>o===item?i:-1).filter(i=>i>=0);w.correct=w.corrects[0];
  w.tSpawn=performance.now();w.rtDone=false;w.tDecided=null;
  w.ghostFace=wordMat(item.w).ghost;
  words.forEach((o,i)=>addPart(w,blockGeo,[sideMat,sideMat,sideMat,sideMat,wordMat(o.w).solid,sideMat],laneX(i),BH,BD,0,'col'));
- w.parts[w.correct].b.ghost=true;
- if(withSpikes)addWallSpikes(w,shuffle([0,1,2,3,4].filter(i=>i!==w.correct)).slice(0,2));
+ for(const i of w.corrects)w.parts[i].b.ghost=true;
+ if(withSpikes)addWallSpikes(w,shuffle([0,1,2,3,4].filter(i=>!w.corrects.includes(i))).slice(0,2));
  addSign(w,buscaMat(item),BH,1);
  diPalabra(item.w);
 }
-function revealWall(w){w.revealed=true;const p=w.parts[w.correct];p.b.ghost=true;p.m.material=[ghostMat,ghostMat,ghostMat,ghostMat,w.ghostFace,ghostMat];}
+function revealWall(w){w.revealed=true;for(const i of w.corrects){const p=w.parts[i];p.b.ghost=true;p.m.material=[ghostMat,ghostMat,ghostMat,ghostMat,w.ghostFace,ghostMat];}}
 const GAP_RH=1.3,gapGeo=new THREE.BoxGeometry(LW-.12,GAP_RH,BD);
 const GAP_SHAPES=[[[0,0],[1,0],[0,1],[1,1]],[[0,0],[0,1],[0,2]],[[0,0],[0,1],[0,2],[1,0]],[[0,0],[1,0],[2,0],[1,1]],[[0,0],[1,0],[1,1],[2,1]],[[0,1],[1,1],[1,0],[2,0]]];
 function spawnGap(){
@@ -1124,6 +1124,7 @@ function updScore(){hud.streak.textContent='Aciertos '+hits+' · Racha ×'+strea
 let toastT=0;function toast(t){const el=$('toast');el.textContent=t;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),1500);}
 function onDeath(c){
  if(c.hero){loseLife();return;}
+ if(wave<(c.endure||0))return;
  c.lives=(c.lives==null?MAXLIVES:c.lives)-1;
  if(c.lives<=0){c.state='out';c.g.visible=false;c.shd.visible=false;c.power=null;c.shield=0;elims++;updScore();
   if(!over&&chars.every(o=>o.hero||o.state==='out'))win();}
@@ -1323,17 +1324,23 @@ function charPhys(c,dt,ivx,ivz){
 
 /* ---------- AI ---------- */
 function threat(c){for(const w of walls){if(!c.passed.has(w.id)&&w.z+w.backOff<c.z+R)return w;}return null;}
-function botUp(c){return Math.min(.3,(wave-1)*.012)+(c.skill||0);}
-function rollSkill(){for(const c of chars)if(!c.hero)c.skill=Math.random()<.2?.3:-.1+Math.random()*.32;}
+function botUp(c){return Math.min(.3,(wave-1)*.012)+(c.skill||0)-(wave>=(c.endure||0)?.45:0);}
+function rollSkill(){const bots=chars.filter(c=>!c.hero);let top=false;
+ for(const c of bots){const r=Math.random();
+  if(r<.18){c.skill=1;c.cap=.999;c.endure=55+Math.random()*40;top=true;}
+  else if(r<.42){c.skill=.3;c.cap=.99;c.endure=25+Math.random()*15;}
+  else if(r<.72){c.skill=.05;c.cap=.97;c.endure=10+Math.random()*12;}
+  else{c.skill=-.14;c.cap=.9;c.endure=3+Math.random()*6;}}
+ if(!top&&bots.length){const c=bots[Math.floor(Math.random()*bots.length)];c.skill=1;c.cap=.999;c.endure=55+Math.random()*40;}}
 function aiMove(c,dt){
  if(!c.wT||T>c.wT){c.wT=T+3+Math.random()*4;c.homeZ=c.hero?-18+Math.random()*24:-30+Math.random()*37;}
  let tx=c.tx,tz=c.homeZ;
  const w=threat(c);
  if(w&&w.type==='word'){
-  if(c.plan!==w.id&&w.z>(c.hero?-15:-19)){c.plan=w.id;c.col=Math.random()<(c.hero?.8:Math.min(.97,.62+botUp(c)))?w.correct:Math.floor(Math.random()*LANES);}
+  if(c.plan!==w.id&&w.z>(c.hero?-15:-19)){c.plan=w.id;c.col=Math.random()<(c.hero?.8:Math.min(c.cap||.97,.62+botUp(c)))?w.corrects[Math.floor(Math.random()*w.corrects.length)]:Math.floor(Math.random()*LANES);}
   if(c.plan===w.id)tx=laneX(c.col)+c.off;
  }else if(w&&w.type==='steps'){
-  if(c.plan!==w.id&&w.z>-17){c.plan=w.id;const non=[0,1,2,3,4].filter(i=>!w.steps.includes(i));c.col=Math.random()<(c.hero?.9:Math.min(.97,.7+botUp(c)))?w.steps[Math.floor(Math.random()*3)]:non[Math.floor(Math.random()*non.length)];c.j1=false;c.j2=false;c.j2t=0;}
+  if(c.plan!==w.id&&w.z>-17){c.plan=w.id;const non=[0,1,2,3,4].filter(i=>!w.steps.includes(i));c.col=Math.random()<(c.hero?.9:Math.min(c.cap||.97,.7+botUp(c)))?w.steps[Math.floor(Math.random()*3)]:non[Math.floor(Math.random()*non.length)];c.j1=false;c.j2=false;c.j2t=0;}
   if(c.plan===w.id){
    tx=laneX(c.col)+c.off*.4;
    const sf=w.z+w.frontOff;
@@ -1343,17 +1350,17 @@ function aiMove(c,dt){
   }
  }
  else if(w&&w.type==='gap'){
-  if(c.plan!==w.id&&w.z>-19){c.plan=w.id;c.col=Math.random()<(c.hero?.9:Math.min(.97,.7+botUp(c)))?w.passCols[Math.floor(Math.random()*w.passCols.length)]:Math.floor(Math.random()*LANES);}
+  if(c.plan!==w.id&&w.z>-19){c.plan=w.id;c.col=Math.random()<(c.hero?.9:Math.min(c.cap||.97,.7+botUp(c)))?w.passCols[Math.floor(Math.random()*w.passCols.length)]:Math.floor(Math.random()*LANES);}
   if(c.plan===w.id)tx=laneX(c.col)+c.off*.3;
  }
  else if(w&&w.type==='bounce'){
-  if(c.plan!==w.id&&w.z>-18){c.plan=w.id;const non=[0,1,2,3,4].filter(i=>!w.pads.includes(i));c.col=Math.random()<(c.hero?.9:Math.min(.97,.72+botUp(c)))?w.pads[Math.floor(Math.random()*w.pads.length)]:non[Math.floor(Math.random()*non.length)];}
+  if(c.plan!==w.id&&w.z>-18){c.plan=w.id;const non=[0,1,2,3,4].filter(i=>!w.pads.includes(i));c.col=Math.random()<(c.hero?.9:Math.min(c.cap||.97,.72+botUp(c)))?w.pads[Math.floor(Math.random()*w.pads.length)]:non[Math.floor(Math.random()*non.length)];}
   if(c.plan===w.id)tx=laneX(c.col)+c.off*.3;
  }else if(w&&w.type==='hurdles'){
   if(c.plan!==w.id){c.plan=w.id;}
-  for(const p of w.parts){const f=w.z+p.b.dz+p.b.d/2;if(c.onGround&&!c.hj.has(p.b)&&f>=c.z-R-w.speed*.13&&f<c.z){c.hj.add(p.b);if(Math.random()<(c.hero?.92:Math.min(.97,.75+botUp(c))))jumpC(c);}}
+  for(const p of w.parts){const f=w.z+p.b.dz+p.b.d/2;if(c.onGround&&!c.hj.has(p.b)&&f>=c.z-R-w.speed*.13&&f<c.z){c.hj.add(p.b);if(Math.random()<(c.hero?.92:Math.min(c.cap||.97,.75+botUp(c))))jumpC(c);}}
  }else if(w&&w.type==='stairs'){
-  if(c.plan!==w.id&&w.z>-17){c.plan=w.id;c.ok=Math.random()<(c.hero?.9:Math.min(.97,.72+botUp(c)));c.j1=false;c.lastStair=null;c.j2t=0;}
+  if(c.plan!==w.id&&w.z>-17){c.plan=w.id;c.ok=Math.random()<(c.hero?.9:Math.min(c.cap||.97,.72+botUp(c)));c.j1=false;c.lastStair=null;c.j2t=0;}
   if(c.plan===w.id){
    const sf=w.z+w.frontOff;
    if(!c.j1&&c.onGround&&!c.ground&&sf>=c.z-R-w.speed*.15){c.j1=true;if(c.ok)jumpC(c);}
@@ -1363,7 +1370,7 @@ function aiMove(c,dt){
   }
  }else if(w&&w.type==='pistons'){
   const eta=Math.max(0,(c.z-R-(w.z+w.frontOff))/w.speed);
-  if(c.plan!==w.id&&w.z>-20){c.plan=w.id;c.ok=Math.random()<(c.hero?.85:Math.min(.97,.65+botUp(c)));c.col=Math.floor(Math.random()*LANES);}
+  if(c.plan!==w.id&&w.z>-20){c.plan=w.id;c.ok=Math.random()<(c.hero?.85:Math.min(c.cap||.97,.65+botUp(c)));c.col=Math.floor(Math.random()*LANES);}
   if(c.plan===w.id){
    if(c.ok&&eta>.7){let bh=9;w.pist.forEach((p,i)=>{const h=w.pistH(p,T+eta);if(h<bh){bh=h;c.col=i;}});}
    tx=laneX(c.col)+c.off*.3;
@@ -1380,16 +1387,16 @@ function aiMove(c,dt){
  }
  for(const b of beams){
   const dz=c.z-b.z;if(dz<0||dz>9)continue;
-  if(b.type==='h'){if(c.onGround&&!b.aiJ.has(c)&&dz<=R+.15+b.speed*.13){b.aiJ.add(c);if(Math.random()<(c.hero?.9:Math.min(.97,.72+botUp(c))))jumpC(c);}}
+  if(b.type==='h'){if(c.onGround&&!b.aiJ.has(c)&&dz<=R+.15+b.speed*.13){b.aiJ.add(c);if(Math.random()<(c.hero?.9:Math.min(c.cap||.97,.72+botUp(c))))jumpC(c);}}
   else for(const x of b.xs){
    if(Math.abs(c.x-x)<1.2&&dz<7){
-    if(!b.aiOk.has(c))b.aiOk.set(c,Math.random()<(c.hero?.9:Math.min(.97,.72+botUp(c))));
+    if(!b.aiOk.has(c))b.aiOk.set(c,Math.random()<(c.hero?.9:Math.min(c.cap||.97,.72+botUp(c))));
     if(b.aiOk.get(c)){let d=c.x>=x?1:-1;if(Math.abs(x+d*1.7)>W/2-.5)d=-d;tx=x+d*1.7;tz=c.z;}
    }
   }
  }
  const pushW=c.cause&&c.cause.type?c.cause:null;
- if(pushW&&c.onGround&&!c.ground&&c.z>P1-1.1&&Math.abs(pushW.z+pushW.frontOff-(c.z-R))<.4){if(c.salvFor!==pushW.id){c.salvFor=pushW.id;c.salv=Math.random()<(c.hero?.85:Math.min(.97,.45+botUp(c)));}if(c.salv)jumpC(c);}
+ if(pushW&&c.onGround&&!c.ground&&c.z>P1-1.1&&Math.abs(pushW.z+pushW.frontOff-(c.z-R))<.4){if(c.salvFor!==pushW.id){c.salvFor=pushW.id;c.salv=Math.random()<(c.hero?.85:Math.min(c.cap||.97,.45+botUp(c)));}if(c.salv)jumpC(c);}
  if(c.salv&&!c.onGround){if(c.air>0&&c.vy<1)jumpC(c);tz=c.z-6;}
  if(c.onGround&&c.ground&&c.ground.owner&&c.ground.owner.type&&!['steps','stairs','bounce'].includes(c.ground.owner.type))tz=c.z-5;
  if(c.onGround&&c.z<P1-2)c.salv=false;
@@ -1427,7 +1434,7 @@ function update(dt){
   for(const p of w.parts){const b=p.b;if(p.ph!=null){b.h=w.pistH(p,T);p.m.scale.y=b.h/3;p.m.position.y=b.h/2;}b.minZ=w.z+b.dz-b.d/2;b.maxZ=w.z+b.dz+b.d/2;b.minY=yoff+(b.y0||0);b.maxY=b.minY+b.h;b.vz=w.speed;}
   const front=w.z+w.frontOff;
   if(!w.revealed&&front>=(hero.state==='play'?hero.z:minZ)-R-1.2)revealWall(w);
-  if(w.type==='word'&&!w.rtDone&&hero.state==='play'&&laneOf(hero.x)===w.correct){w.tDecided=performance.now();w.rtDone=true;}
+  if(w.type==='word'&&!w.rtDone&&hero.state==='play'&&w.corrects.includes(laneOf(hero.x))){w.tDecided=performance.now();w.rtDone=true;}
   if(!w.spawnedNext&&front>P1-2){w.spawnedNext=true;nextWave();}
   if(w.z>P1+14){scene.remove(w.g);removeOwner(w);walls.splice(i,1);}
  }
