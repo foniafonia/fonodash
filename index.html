@@ -1106,6 +1106,10 @@ function enviaResultados(winner){
  if(p1.length&&p2.length)filas.push(['Fatiga (1ª mitad → 2ª mitad)',pct(p1)+' → '+pct(p2)]);
  if(mal){const cuenta={};intentos.filter(x=>!x.ok).forEach(x=>cuenta[x.palabra]=(cuenta[x.palabra]||0)+1);
   filas.push(['Palabras que más cuestan',Object.entries(cuenta).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([w,n])=>w+' ('+n+')').join(', ')]);}
+ /* las tres filas comunes que lee el panel de Fönia */
+ const pc=Math.round(bien/intentos.length*100),son=FONEMAS[FONEMA].n;
+ const cu={};intentos.filter(x=>!x.ok).forEach(x=>cu[x.palabra]=(cu[x.palabra]||0)+1);
+ filas.push(['Fönia · Cómo va',pc>=80?'bien':pc>=50?'regular':'le cuesta'],['Fönia · Qué le cuesta',Object.keys(cu).sort((a,b)=>cu[b]-cu[a]).slice(0,5).join(', ')||'—'],['Fönia · Qué toca ahora',pc>=80?'seguir con «'+son+'» o cambiar de sonido':pc>=50?'seguir con «'+son+'»':'repetir «'+son+'» y repasar antes las palabras con un adulto']);
  const reg={id:foniaId(),caso:CASO,terapeuta:TERAPEUTA,texto:foniaTexto(filas)};
  foniaManda(reg).catch(()=>foniaGuarda(reg));
 }
@@ -1137,6 +1141,10 @@ function showBanner(winner){
  $('rewardLine').innerHTML='<span><span class="ic"></span> +'+r.coinsEarned+'</span><span>✦ +'+r.xpEarned+' XP</span>';
  $('ban').hidden=false;hud.pop.className='pop';
  enviaResultados(winner);
+ /* Gabinete Fönia: si el enlace trae el espacio de la familia, se puede volver */
+ (function(){const m=/^([A-Za-z0-9]{24})\.([A-Za-z0-9_-]{43})$/.exec(Q.get('volver')||'');if(!m||$('foniaVolver'))return;
+  const a=document.createElement('a');a.id='foniaVolver';a.href='https://fonia-materiales.vercel.app/tratamiento/#t='+m[1]+'&k='+m[2];a.textContent='🏠 Volver a mi plan';
+  a.style.cssText='display:block;margin:12px auto 0;text-align:center;font-weight:700;color:#fff;position:relative;z-index:5';$('ban').appendChild(a)})();
 }
 function win(){over=true;overT=T;showBanner(true);burst(new THREE.Vector3(hero.x,hero.y+2,hero.z));burst(new THREE.Vector3(hero.x,hero.y+2.5,hero.z));}
 function loseLife(){
