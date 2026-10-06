@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>FonoDash</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1065,11 +1065,23 @@ function logIntento(w,ok){intentos.push({palabra:w.item.w,ok,rt:w.tDecided!=null
    nunca se mezcla con otra voz. */
 let VOZ_IDX={};
 fetch('voz/indice.json').then(r=>r.ok?r.json():{}).then(j=>{VOZ_IDX=j||{}}).catch(()=>{});
-let vozEl=null;
+/* Un solo reproductor, desbloqueado con el primer toque: en iPad, Safari solo
+   deja sonar un audio que nace de un toque, y la palabra se dice cuando aparece
+   el muro, no cuando se toca (06/10/2026, mismo arreglo que en FonoKart). */
+const vozEl=new Audio();vozEl.preload='auto';
+let vozLista=false;
+function desbloqueaVoz(){
+ if(vozLista)return;vozLista=true;
+ try{const k=Object.keys(VOZ_IDX)[0];if(!k){vozLista=false;return}
+  vozEl.muted=true;vozEl.src='voz/'+VOZ_IDX[k]+'.mp3';const p=vozEl.play();
+  const fin=()=>{if(!vozEl.muted)return;try{vozEl.pause()}catch(e){}vozEl.muted=false};
+  if(p&&p.then)p.then(fin,()=>{vozEl.muted=false;vozLista=false});else fin();
+ }catch(e){vozLista=false}
+}
+['touchend','pointerup','keydown'].forEach(t=>document.addEventListener(t,desbloqueaVoz,true));
 function diPalabra(palabra){
  const clave=VOZ_IDX[palabra];if(!clave)return;
- if(!vozEl)vozEl=new Audio();
- vozEl.pause();vozEl.src='voz/'+clave+'.mp3';vozEl.currentTime=0;vozEl.play().catch(()=>{});
+ try{vozEl.pause();vozEl.muted=false;vozEl.src='voz/'+clave+'.mp3';const p=vozEl.play();if(p&&p.catch)p.catch(()=>{})}catch(e){}
 }
 const Q=(()=>{try{return new URLSearchParams(location.search)}catch(e){return {get:()=>null}}})();
 const CASO=(()=>{const v=(Q.get('caso')||'').toLowerCase().trim();return /^[0a-i]{1,24}$/.test(v)?v:''})();
@@ -1181,7 +1193,26 @@ function orient(){const w=innerWidth,h=innerHeight;rotated=h>w*1.05&&matchMedia(
  if(typeof resize==='function')resize();}
 addEventListener('resize',orient);addEventListener('orientationchange',()=>setTimeout(orient,250));
 document.addEventListener('touchmove',e=>{if(!(e.target.closest&&e.target.closest('.helpcard')))e.preventDefault();},{passive:false});
-document.addEventListener('gesturestart',e=>e.preventDefault());
+['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+/* iPad (06/10/2026): se juega con dos dedos (joystick y botones) y Safari lo
+   toma por un pellizco: la pantalla se ampliaba y no se podía jugar. Se corta
+   en el touchstart, se bloquea el doble toque y, si aun así se amplía (o al
+   girar la tableta), se deshace solo reescribiendo el viewport. */
+document.addEventListener('touchstart',e=>{if(e.touches.length>1&&!(e.target.closest&&e.target.closest('.helpcard,.shopcard')))e.preventDefault();},{passive:false});
+let ultimoToque=0;
+document.addEventListener('touchend',e=>{const ahora=Date.now();if(ahora-ultimoToque<350&&!(e.target.closest&&e.target.closest('input,textarea,select')))e.preventDefault();ultimoToque=ahora;},{passive:false});
+(function(){
+ const vv=window.visualViewport,meta=document.querySelector('meta[name=viewport]');if(!vv||!meta)return;
+ const BUENO=meta.getAttribute('content');let pendiente=0;
+ function deshaceZoom(){
+  if(Math.abs(vv.scale-1)<0.02&&vv.offsetLeft<2&&vv.offsetTop<2)return;
+  clearTimeout(pendiente);
+  pendiente=setTimeout(()=>{meta.setAttribute('content','width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no');
+   requestAnimationFrame(()=>{meta.setAttribute('content',BUENO);window.scrollTo(0,0)})},120);
+ }
+ vv.addEventListener('resize',deshaceZoom);vv.addEventListener('scroll',deshaceZoom);
+ addEventListener('orientationchange',()=>setTimeout(deshaceZoom,300));
+})();
 let musicEl=null,musicOn=true;
 try{musicOn=localStorage.getItem('sucadash-music')!=='0';}catch(_){}
 function startMusic(){
