@@ -58,6 +58,15 @@ body{color:#fff;font-family:'Nunito',system-ui,sans-serif;touch-action:none;-web
 .btn:focus-visible{outline:3px solid var(--green);outline-offset:3px}
 .btn svg{width:45%;height:45%}
 .jump{position:absolute;right:2.8%;bottom:6%;width:5.4em;height:5.4em}
+/* Con el dedo: el botón de saltar, bien grande, y además vale tocar cualquier sitio de la
+   mitad derecha (una familia, 12/10: «el botón de saltar es pequeño»). La zona va la primera
+   dentro del HUD, así que el resto de botones quedan por encima y siguen funcionando. */
+.jzone{display:none;position:absolute;left:50%;right:0;top:0;bottom:0;touch-action:none}
+@media (hover:none),(pointer:coarse){
+ .jzone{display:block;pointer-events:auto}
+ .jump{width:8em;height:8em;right:2.4%;bottom:5%;background:rgba(255,255,255,.22);border-width:.2em}
+ .hud .use{right:2.4%;bottom:calc(5% + 9em)}
+}
 .jump .b{position:absolute;top:-.55em;right:-.2em;width:1.6em;height:1.6em;border-radius:50%;background:#fff;color:var(--out);font-family:'Lilita One',sans-serif;font-size:.9em;display:flex;align-items:center;justify-content:center;border:.12em solid var(--out)}
 .mini{position:absolute;right:2.4%;top:24%;display:flex;gap:.5em}
 .use{position:absolute;right:11.5%;bottom:7%;width:4.8em;height:4.8em;background:rgba(255,210,60,.28);border-color:#ffe14d;color:#ffe14d;animation:useP 1s ease-in-out infinite}
@@ -126,6 +135,7 @@ body{color:#fff;font-family:'Nunito',system-ui,sans-serif;touch-action:none;-web
  <div class="stage" id="stage">
   <canvas id="gl"></canvas>
   <div class="hud">
+   <div class="jzone" id="zJ" aria-hidden="true"></div>
    <div class="obj">
     <span class="tab">Objetivo</span>
     <div class="card">¡NO TE CAIGAS!</div>
@@ -167,7 +177,7 @@ body{color:#fff;font-family:'Nunito',system-ui,sans-serif;touch-action:none;-web
     <div class="hint" id="bestLine"></div>
     <div class="startBtns"><button class="gbtn" id="play" type="button">JUGAR</button><button class="gbtn alt" id="howBtn" type="button">Cómo se juega</button></div>
     <div class="menuBtns"><button class="gbtn alt" id="charBtnStart" type="button">🧑 PERSONAJE</button><button class="gbtn alt" id="shopBtnStart" type="button">🎨 TIENDA</button><button class="gbtn alt" id="passBtnStart" type="button">🎖️ PASE DE BATALLA</button></div>
-    <div class="hint">Joystick o flechas para moverte · B o espacio para saltar</div>
+    <div class="hint">Joystick o flechas para moverte · B o espacio para saltar · con el dedo, toca la mitad derecha para saltar</div>
    </div>
    <div class="help" id="help" hidden>
     <div class="helpcard">
@@ -1321,6 +1331,7 @@ joy.addEventListener('pointermove',e=>{if(e.pointerId===joyId){joyUpd(e);lastInp
 joy.addEventListener('pointerup',joyEnd);joy.addEventListener('pointercancel',joyEnd);joy.addEventListener('lostpointercapture',joyEnd);
 $('again').addEventListener('click',()=>{lastInput=T;restart();});
 $('bJ').addEventListener('pointerdown',e=>{e.preventDefault();jump();});
+$('zJ').addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;e.preventDefault();jump();});
 $('bJ').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();jump();}});
 
 /* ---------- resize ---------- */
